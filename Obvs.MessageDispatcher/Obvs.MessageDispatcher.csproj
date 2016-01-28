@@ -62,7 +62,7 @@
   <ItemGroup>
     <Compile Include="IMessageDispatcher.cs" />
     <Compile Include="IMessageHandler.cs" />
-    <Compile Include="IMessageHandlerProvider.cs" />
+    <Compile Include="IMessageHandlerSelector.cs" />
     <Compile Include="MessageDispatcher.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>

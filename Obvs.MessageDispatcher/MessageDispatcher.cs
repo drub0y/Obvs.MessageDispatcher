@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reactive.Linq;
@@ -12,28 +11,26 @@ namespace Obvs.MessageDispatcher
 {
     public class MessageDispatcher<TMessage> : IMessageDispatcher<TMessage>
     {
-        private static readonly MethodInfo MessageHandlerProviderGetMessageHandlerGenericMethodInfo = typeof(IMessageHandlerProvider).GetMethod(nameof(IMessageHandlerProvider.GetMessageHandler));
+        private static readonly MethodInfo MessageHandlerSelectorSelectMessageHandlerGenericMethodInfo = typeof(IMessageHandlerSelector).GetMethod(nameof(IMessageHandlerSelector.SelectMessageHandler));
 
-        private readonly Func<IMessageHandlerProvider> _handlerProviderFactory;
-        private readonly ConcurrentDictionary<Type, Func<IMessageHandler>> _messageHandlerGetTypedHandlerFuncCache = new ConcurrentDictionary<Type, Func<IMessageHandler>>();
+        private readonly Func<IMessageHandlerSelector> _messageHandlerSelectorFactory;
+        private readonly ConcurrentDictionary<Type, Func<IMessageHandlerSelector, TMessage, IMessageHandler>> _messageHandlerGetTypedHandlerFuncCache = new ConcurrentDictionary<Type, Func<IMessageHandlerSelector, TMessage, IMessageHandler>>();
         private readonly ConcurrentDictionary<Type, Func<IMessageHandler, TMessage, CancellationToken, Task>> _messageHandlerHandleAsyncFuncCache = new ConcurrentDictionary<Type, Func<IMessageHandler, TMessage, CancellationToken, Task>>();
 
-        public MessageDispatcher(Func<IMessageHandlerProvider> handlerProviderFactory)
+        public MessageDispatcher(Func<IMessageHandlerSelector> messageHandlerSelectorFactory)
         {
-            _handlerProviderFactory = handlerProviderFactory;
+            _messageHandlerSelectorFactory = messageHandlerSelectorFactory;
         }
 
         public IObservable<MessageDispatchResult<TMessage>> Run(IObservable<TMessage> messages)
         {
             return messages.SelectMany(async (message, cancellationToken) =>
             {
-                var messageType = message.GetType();
-
-                var messageHandlerProvider = _handlerProviderFactory();
+                var messageHandlerSelector = _messageHandlerSelectorFactory();
 
                 try
                 {
-                    var messageHandler = GetHandlerForMessageType(messageHandlerProvider, messageType);
+                    var messageHandler = SelectHandlerForMessage(messageHandlerSelector, message);
                     var handled = false;
 
                     if(messageHandler != null)
@@ -49,7 +46,7 @@ namespace Obvs.MessageDispatcher
                 }
                 finally
                 {
-                    var disposableMessageHandlerProvider = messageHandlerProvider as IDisposable;
+                    var disposableMessageHandlerProvider = messageHandlerSelector as IDisposable;
 
                     if(disposableMessageHandlerProvider != null)
                     {
@@ -60,19 +57,20 @@ namespace Obvs.MessageDispatcher
             .Select(mdr => mdr);
         }
 
-        private IMessageHandler GetHandlerForMessageType(IMessageHandlerProvider messageHandlerProvider, Type messageType)
+        private IMessageHandler SelectHandlerForMessage(IMessageHandlerSelector messageHandlerSelector, TMessage message)
         {
-            var getMessageHandlerFromProviderTypedFunc = _messageHandlerGetTypedHandlerFuncCache.GetOrAdd(
-                messageType,
+            var getMessageHandlerFromSelectorTypedFunc = _messageHandlerGetTypedHandlerFuncCache.GetOrAdd(
+                message.GetType(),
                 mt =>
                 {
-                    var getHandlersOfMessageTypeMethodInfo = MessageHandlerProviderGetMessageHandlerGenericMethodInfo.MakeGenericMethod(mt);
-                    var messageHandlerProviderConstantExpression = Expression.Constant(messageHandlerProvider, typeof(IMessageHandlerProvider));
+                    var getHandlersOfMessageTypeMethodInfo = MessageHandlerSelectorSelectMessageHandlerGenericMethodInfo.MakeGenericMethod(mt);
+                    var messageHandlerSelectorParameterExpression = Expression.Parameter(typeof(IMessageHandlerSelector));
+                    var messageParameterExpression = Expression.Parameter(typeof(TMessage));
 
-                    return Expression.Lambda<Func<IMessageHandler>>(Expression.Call(messageHandlerProviderConstantExpression, getHandlersOfMessageTypeMethodInfo)).Compile();
+                    return Expression.Lambda<Func<IMessageHandlerSelector, TMessage, IMessageHandler>>(Expression.Call(messageHandlerSelectorParameterExpression, getHandlersOfMessageTypeMethodInfo, messageParameterExpression), messageHandlerSelectorParameterExpression, messageParameterExpression).Compile();
                 });
 
-            return getMessageHandlerFromProviderTypedFunc();
+            return getMessageHandlerFromSelectorTypedFunc(messageHandlerSelector, message);
         }
 
         private Func<IMessageHandler, TMessage, CancellationToken, Task> GetMessageHandlerHandleFunc(Type messageType)
