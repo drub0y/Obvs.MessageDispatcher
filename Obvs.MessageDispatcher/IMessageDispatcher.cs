@@ -1,23 +1,22 @@
-﻿using Obvs.Types;
-using System;
-using System.Threading;
+﻿using System;
+using Obvs.Types;
 
 namespace Obvs.MessageDispatcher
 {
-	public interface IMessageDispatcher
+    public interface IMessageDispatcher<TMessage>
 	{
-		IObservable<MessageDispatchResult> Run(IObservable<IMessage> messages, CancellationToken cancellationToken);
+		IObservable<MessageDispatchResult<TMessage>> Run(IObservable<TMessage> messages);
 	}
 
-	public class MessageDispatchResult
+	public class MessageDispatchResult<TMessage>
 	{
-		public MessageDispatchResult(IMessage message, bool handled)
+		public MessageDispatchResult(TMessage message, bool handled)
 		{
 			this.Message = message;
 			this.Handled = handled;
 		}
 
-		public IMessage Message
+		public TMessage Message
 		{
 			get;
 			private set;

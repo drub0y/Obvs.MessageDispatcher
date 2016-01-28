@@ -1,9 +1,7 @@
-﻿using Obvs.Types;
-
-namespace Obvs.MessageDispatcher
+﻿namespace Obvs.MessageDispatcher
 {
-	public interface IMessageHandlerProvider
+    public interface IMessageHandlerProvider
 	{
-		IMessageHandler<TMessage> Provide<TMessage>() where TMessage : IMessage;
+        IMessageHandler<TMessage> GetMessageHandler<TMessage>();
 	}
 }

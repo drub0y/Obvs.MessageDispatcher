@@ -1,33 +1,32 @@
 ﻿using System;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Moq;
-using System.Reactive.Subjects;
-using Obvs.Types;
-using FluentAssertions;
-using Xunit;
 using System.Reactive.Disposables;
-using System.Threading;
 using System.Reactive.Linq;
+using System.Reactive.Subjects;
+using System.Threading;
 using System.Threading.Tasks;
+using FluentAssertions;
+using Moq;
+using Obvs.Types;
+using Xunit;
 
 namespace Obvs.MessageDispatcher.Tests
 {
-	public class MessageDispatcherFacts
+    public class MessageDispatcherFacts
 	{
 		public class RunFacts
 		{
 			[Fact]
 			public void SubscribesToObservableMessageSource()
 			{
-				Mock<IMessageHandlerProvider> mockMessageHandlerProvider = new Mock<IMessageHandlerProvider>();
+				var mockMessageHandlerProvider = new Mock<IMessageHandlerProvider>();
 
-				MessageDispatcher dispatcher = new MessageDispatcher(mockMessageHandlerProvider.Object);
+				var dispatcher = new MessageDispatcher<TestMessage>(() => mockMessageHandlerProvider.Object);
 
-				Mock<IObservable<TestMessage>> testMessagesMock = new Mock<IObservable<TestMessage>>();
+				var testMessagesMock = new Mock<IObservable<TestMessage>>();
 				testMessagesMock.Setup(it => it.Subscribe(It.IsAny<IObserver<TestMessage>>()))
 					.Returns(Disposable.Empty);
 
-				IObservable<MessageDispatchResult> messageDispatchResults = dispatcher.Run(testMessagesMock.Object);
+				var messageDispatchResults = dispatcher.Run(testMessagesMock.Object);
 
 				messageDispatchResults.Should().NotBeNull();
 
@@ -39,17 +38,17 @@ namespace Obvs.MessageDispatcher.Tests
 			[Fact]
 			public void DisposesSubscriptionOnObservableMessageSource()
 			{
-				Mock<IMessageHandlerProvider> mockMessageHandlerProvider = new Mock<IMessageHandlerProvider>();
+				var mockMessageHandlerProvider = new Mock<IMessageHandlerProvider>();
 
-				MessageDispatcher dispatcher = new MessageDispatcher(mockMessageHandlerProvider.Object);
+				var dispatcher = new MessageDispatcher<TestMessage>(() => mockMessageHandlerProvider.Object);
 
-				Mock<IDisposable> runAsyncDisposableMock = new Mock<IDisposable>();
+				var runAsyncDisposableMock = new Mock<IDisposable>();
 
-				Mock<IObservable<TestMessage>> testMessagesMock = new Mock<IObservable<TestMessage>>();
+				var testMessagesMock = new Mock<IObservable<TestMessage>>();
 				testMessagesMock.Setup(it => it.Subscribe(It.IsAny<IObserver<TestMessage>>()))
 					.Returns(runAsyncDisposableMock.Object);
 
-				IObservable<MessageDispatchResult> messageDispatchResults = dispatcher.Run(testMessagesMock.Object);
+				var messageDispatchResults = dispatcher.Run(testMessagesMock.Object);
 
 				messageDispatchResults.Subscribe().Dispose();
 
@@ -59,30 +58,30 @@ namespace Obvs.MessageDispatcher.Tests
 			[Fact]
 			public void InvokesMessageHandlerProvider()
 			{
-				Mock<IMessageHandlerProvider> mockMessageHandlerProvider = new Mock<IMessageHandlerProvider>();
+				var mockMessageHandlerProvider = new Mock<IMessageHandlerProvider>();
 
-				MessageDispatcher dispatcher = new MessageDispatcher(mockMessageHandlerProvider.Object);
+				var dispatcher = new MessageDispatcher<TestMessage>(() => mockMessageHandlerProvider.Object);
 
-				Subject<IMessage> messageSubject = new Subject<IMessage>();
+				var messageSubject = new Subject<TestMessage>();
 
 				using (dispatcher.Run(messageSubject).Subscribe())
 				{
 					messageSubject.OnNext(new TestMessage());
 				}
 				
-				mockMessageHandlerProvider.Verify(mhp => mhp.Provide<TestMessage>(), Times.Once());
+				mockMessageHandlerProvider.Verify(mhp => mhp.GetMessageHandler<TestMessage>(), Times.Once());
 			}
 
 			[Fact]
 			public void DoesntDispatchMessageWhichHasNoHandler()
 			{
-				Mock<IMessageHandlerProvider> mockMessageHandlerProvider = new Mock<IMessageHandlerProvider>();
+				var mockMessageHandlerProvider = new Mock<IMessageHandlerProvider>();
 
-				MessageDispatcher dispatcher = new MessageDispatcher(mockMessageHandlerProvider.Object);
+                var dispatcher = new MessageDispatcher<TestMessage>(() => mockMessageHandlerProvider.Object);
 
-				Subject<IMessage> messageSubject = new Subject<IMessage>();
+				var messageSubject = new Subject<TestMessage>();
 
-				IObservable<MessageDispatchResult> messageDispatchResults = dispatcher.Run(messageSubject);
+				var messageDispatchResults = dispatcher.Run(messageSubject);
 
 				TestMessage testMessage = new TestMessage();
 
@@ -102,16 +101,16 @@ namespace Obvs.MessageDispatcher.Tests
 				Mock<IMessageHandler<TestMessage>> mockMessageHandler = new Mock<IMessageHandler<TestMessage>>();
 
 				Mock<IMessageHandlerProvider> mockMessageHandlerProvider = new Mock<IMessageHandlerProvider>();
-				mockMessageHandlerProvider.Setup(mhp => mhp.Provide<TestMessage>())
+				mockMessageHandlerProvider.Setup(mhp => mhp.GetMessageHandler<TestMessage>())
 					.Returns(mockMessageHandler.Object);
 
-				MessageDispatcher dispatcher = new MessageDispatcher(mockMessageHandlerProvider.Object);
+				var dispatcher = new MessageDispatcher<TestMessage>(() => mockMessageHandlerProvider.Object);
 
-				Subject<IMessage> messageSubject = new Subject<IMessage>();
+				var messageSubject = new Subject<TestMessage>();
 
-				TestMessage testMessage = new TestMessage();
+				var testMessage = new TestMessage();
 
-				IObservable<MessageDispatchResult> messageDispatcherResults = dispatcher.Run(messageSubject);
+				var messageDispatcherResults = dispatcher.Run(messageSubject);
 
 				using(messageDispatcherResults.Subscribe(mdr =>
 				{
@@ -128,19 +127,19 @@ namespace Obvs.MessageDispatcher.Tests
 			[Fact]
 			public void DoesNotHandleMessagesBeforeOrAfterSubscription()
 			{
-				Mock<IMessageHandler<TestMessage>> mockMessageHandler = new Mock<IMessageHandler<TestMessage>>();
+				var mockMessageHandler = new Mock<IMessageHandler<TestMessage>>();
 
-				Mock<IMessageHandlerProvider> mockMessageHandlerProvider = new Mock<IMessageHandlerProvider>();
-				mockMessageHandlerProvider.Setup(mhp => mhp.Provide<TestMessage>())
+				var mockMessageHandlerProvider = new Mock<IMessageHandlerProvider>();
+				mockMessageHandlerProvider.Setup(mhp => mhp.GetMessageHandler<TestMessage>())
 					.Returns(mockMessageHandler.Object);
 
-				MessageDispatcher dispatcher = new MessageDispatcher(mockMessageHandlerProvider.Object);
+				var dispatcher = new MessageDispatcher<TestMessage>(() => mockMessageHandlerProvider.Object);
 
-				Subject<IMessage> messageSubject = new Subject<IMessage>();
+				var messageSubject = new Subject<TestMessage>();
 
-				TestMessage testMessage = new TestMessage();
+				var testMessage = new TestMessage();
 
-				IObservable<MessageDispatchResult> messageDispatcherResults = dispatcher.Run(messageSubject);
+				var messageDispatcherResults = dispatcher.Run(messageSubject);
 
 				messageSubject.OnNext(testMessage);
 
@@ -157,20 +156,20 @@ namespace Obvs.MessageDispatcher.Tests
 			[Fact]
 			public async Task ProcessesMessagesInCorrectOrder()
 			{
-				Mock<IMessageHandler<TestMessage>> mockMessageHandler = new Mock<IMessageHandler<TestMessage>>();
+				var mockMessageHandler = new Mock<IMessageHandler<TestMessage>>();
 
-				Mock<IMessageHandlerProvider> mockMessageHandlerProvider = new Mock<IMessageHandlerProvider>();
-				mockMessageHandlerProvider.Setup(mhp => mhp.Provide<TestMessage>())
+				var mockMessageHandlerProvider = new Mock<IMessageHandlerProvider>();
+				mockMessageHandlerProvider.Setup(mhp => mhp.GetMessageHandler<TestMessage>())
 					.Returns(mockMessageHandler.Object);
 
-				MessageDispatcher dispatcher = new MessageDispatcher(mockMessageHandlerProvider.Object);
+				var dispatcher = new MessageDispatcher<TestMessage>(() => mockMessageHandlerProvider.Object);
 
 				TestMessage testMessage1 = new TestMessage();
 				TestMessage testMessage2 = new TestMessage();
 
-				IObservable<TestMessage> testMessages = (new[] { testMessage1, testMessage2 }).ToObservable();
+				var testMessages = (new[] { testMessage1, testMessage2 }).ToObservable();
 
-				IObservable<MessageDispatchResult> messageDispatcherResults = dispatcher.Run(testMessages);
+				var messageDispatcherResults = dispatcher.Run(testMessages);
 
 				bool areEqual = await messageDispatcherResults.Select(mdr => mdr.Message).SequenceEqual(testMessages).FirstAsync();
 

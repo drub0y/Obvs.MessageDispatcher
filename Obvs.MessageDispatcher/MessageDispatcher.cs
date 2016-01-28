@@ -1,98 +1,99 @@
-﻿using Obvs.Types;
-using System;
+﻿using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reactive.Linq;
-using System.Reactive.Subjects;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 
 namespace Obvs.MessageDispatcher
 {
-	public class MessageDispatcher : IMessageDispatcher
-	{
-		private static readonly MethodInfo GetMessageHandlerMethodInfo = typeof(MessageDispatcher).GetMethod("GetMessageHandler", Type.EmptyTypes);
+    public class MessageDispatcher<TMessage> : IMessageDispatcher<TMessage>
+    {
+        private static readonly MethodInfo MessageHandlerProviderGetMessageHandlerGenericMethodInfo = typeof(IMessageHandlerProvider).GetMethod(nameof(IMessageHandlerProvider.GetMessageHandler));
 
-		private readonly IMessageHandlerProvider _handlerProvider;
-		private readonly ConcurrentDictionary<Type, Func<IMessage, CancellationToken, Task>> _messageHandlerHandleAsyncFuncCache = new ConcurrentDictionary<Type, Func<IMessage, CancellationToken, Task>>();
-		
-		public MessageDispatcher(IMessageHandlerProvider handlerProvider)
-		{
-			_handlerProvider = handlerProvider;
-		}
+        private readonly Func<IMessageHandlerProvider> _handlerProviderFactory;
+        private readonly ConcurrentDictionary<Type, Func<IMessageHandler>> _messageHandlerGetTypedHandlerFuncCache = new ConcurrentDictionary<Type, Func<IMessageHandler>>();
+        private readonly ConcurrentDictionary<Type, Func<IMessageHandler, TMessage, CancellationToken, Task>> _messageHandlerHandleAsyncFuncCache = new ConcurrentDictionary<Type, Func<IMessageHandler, TMessage, CancellationToken, Task>>();
 
-		public IObservable<MessageDispatchResult> Run(IObservable<IMessage> messages)
-		{
-			return Run(messages, CancellationToken.None);
-		}
+        public MessageDispatcher(Func<IMessageHandlerProvider> handlerProviderFactory)
+        {
+            _handlerProviderFactory = handlerProviderFactory;
+        }
 
-		public IObservable<MessageDispatchResult> Run(IObservable<IMessage> messages, CancellationToken cancellationToken)
-		{
-			return messages.SelectMany(async message =>
-				{
-					Type messageType = message.GetType();
+        public IObservable<MessageDispatchResult<TMessage>> Run(IObservable<TMessage> messages)
+        {
+            return messages.SelectMany(async (message, cancellationToken) =>
+            {
+                var messageType = message.GetType();
 
-					Func<IMessage, CancellationToken, Task> handleMessageAsyncFunc = GetMessageHandlerHandleFunc(messageType);
-					
-					bool messageHandled;
+                var messageHandlerProvider = _handlerProviderFactory();
 
-					if (handleMessageAsyncFunc != null)
-					{
-						await handleMessageAsyncFunc(message, cancellationToken);
+                try
+                {
+                    var messageHandler = GetHandlerForMessageType(messageHandlerProvider, messageType);
+                    var handled = false;
 
-						messageHandled = true;
-					}
-					else
-					{
-						messageHandled = false;
-					}
+                    if(messageHandler != null)
+                    {
+                        Func<IMessageHandler, TMessage, CancellationToken, Task> handleMessageAsync = GetMessageHandlerHandleFunc(message.GetType());
 
-					return new MessageDispatchResult(message, messageHandled);
-				})
-				.Select(mdr => mdr);
-		}
+                        await handleMessageAsync(messageHandler, message, cancellationToken);
 
-		public Func<IMessageHandler> GetMessageHandler(Type messageType)
-		{
-			MethodInfo mi = GetMessageHandlerMethodInfo.MakeGenericMethod(messageType);
+                        handled = true;
+                    }
 
-			return Expression.Lambda<Func<IMessageHandler>>(Expression.Call(Expression.Constant(this), mi)).Compile();
-		}
+                    return new MessageDispatchResult<TMessage>(message, handled);
+                }
+                finally
+                {
+                    var disposableMessageHandlerProvider = messageHandlerProvider as IDisposable;
 
-		private Func<IMessage, CancellationToken, Task> GetMessageHandlerHandleFunc(Type messageType)
-		{
-			return _messageHandlerHandleAsyncFuncCache.GetOrAdd(
-				messageType,
-				(mt) =>
-				{
-					IMessageHandler messageHandler = GetMessageHandler(mt)();
-					Func<IMessage, CancellationToken, Task> func;
+                    if(disposableMessageHandlerProvider != null)
+                    {
+                        disposableMessageHandlerProvider.Dispose();
+                    }
+                }
+            })
+            .Select(mdr => mdr);
+        }
 
-					if (messageHandler != null)
-					{
-						MethodInfo handleMethodInfo = typeof(IMessageHandler<>).MakeGenericType(mt).GetMethod("HandleAsync");
+        private IMessageHandler GetHandlerForMessageType(IMessageHandlerProvider messageHandlerProvider, Type messageType)
+        {
+            var getMessageHandlerFromProviderTypedFunc = _messageHandlerGetTypedHandlerFuncCache.GetOrAdd(
+                messageType,
+                mt =>
+                {
+                    var getHandlersOfMessageTypeMethodInfo = MessageHandlerProviderGetMessageHandlerGenericMethodInfo.MakeGenericMethod(mt);
+                    var messageHandlerProviderConstantExpression = Expression.Constant(messageHandlerProvider, typeof(IMessageHandlerProvider));
 
-						ParameterExpression messageParameterExpression = Expression.Parameter(typeof(IMessage), "message");
-						ParameterExpression cancellationTokenParameterExpression = Expression.Parameter(typeof(CancellationToken), "cancellationToken");
+                    return Expression.Lambda<Func<IMessageHandler>>(Expression.Call(messageHandlerProviderConstantExpression, getHandlersOfMessageTypeMethodInfo)).Compile();
+                });
 
-						MethodCallExpression handleMethodCallExpression = Expression.Call(Expression.Constant(messageHandler), handleMethodInfo, Expression.Convert(messageParameterExpression, mt), cancellationTokenParameterExpression);
+            return getMessageHandlerFromProviderTypedFunc();
+        }
 
-						func = Expression.Lambda<Func<IMessage, CancellationToken, Task>>(handleMethodCallExpression, messageParameterExpression, cancellationTokenParameterExpression).Compile();
-					}
-					else
-					{
-						func = null;
-					}
+        private Func<IMessageHandler, TMessage, CancellationToken, Task> GetMessageHandlerHandleFunc(Type messageType)
+        {
+            return _messageHandlerHandleAsyncFuncCache.GetOrAdd(
+                messageType,
+                (mt) =>
+                {
+                    var messageHandlerGenericType = typeof(IMessageHandler<>).MakeGenericType(mt);
+                    var handleMethodInfo = messageHandlerGenericType.GetMethod("HandleAsync");
 
-					return func;
-				});
-	    }
+                    var messageHandlerParameterExpression = Expression.Parameter(typeof(IMessageHandler), "messageHandler");
+                    var messageParameterExpression = Expression.Parameter(typeof(TMessage), "message");
+                    var cancellationTokenParameterExpression = Expression.Parameter(typeof(CancellationToken), "cancellationToken");
 
-		public IMessageHandler<TMessage> GetMessageHandler<TMessage>() where TMessage : IMessage
-		{
-			return _handlerProvider.Provide<TMessage>();
-		}
-	}
+                    var handleMethodCallExpression = Expression.Call(Expression.Convert(messageHandlerParameterExpression, messageHandlerGenericType), handleMethodInfo, Expression.Convert(messageParameterExpression, mt), cancellationTokenParameterExpression);
+
+                    var compiledLambda = Expression.Lambda<Func<IMessageHandler, TMessage, CancellationToken, Task>>(handleMethodCallExpression, messageHandlerParameterExpression, messageParameterExpression, cancellationTokenParameterExpression).Compile();
+
+                    return compiledLambda;
+                });
+        }
+    }
 }
