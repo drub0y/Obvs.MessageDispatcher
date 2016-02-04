@@ -57,6 +57,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Configuration.cs" />
     <Compile Include="IMessageDispatcher.cs" />
     <Compile Include="IMessageHandler.cs" />
     <Compile Include="IMessageHandlerSelector.cs" />

@@ -99,6 +99,7 @@
     <Otherwise />
   </Choose>
   <ItemGroup>
+    <Compile Include="MessageDispatcherConfigurationFacts.cs" />
     <Compile Include="MessageDispatcherFacts.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
