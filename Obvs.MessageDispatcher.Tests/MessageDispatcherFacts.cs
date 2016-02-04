@@ -75,7 +75,7 @@ namespace Obvs.MessageDispatcher.Tests
 			}
 
             [Fact]
-            public void InvokesCorrectMessageHandlerSelectorFromFactoryEachTime()
+            public void InvokesNewMessageHandlerSelectorFromFactoryEachMessage()
             {
                 var messageHandlerSelectorFactoryMock = new Mock<Func<IMessageHandlerSelector>>();
 
@@ -114,6 +114,29 @@ namespace Obvs.MessageDispatcher.Tests
                 firstMockMessageHandlerSelector.Verify(mhp => mhp.SelectMessageHandler<TestMessage>(testMessage), Times.Once());
                 secondMockMessageHandlerSelector.Verify(mhp => mhp.SelectMessageHandler<TestMessage>(testMessage2), Times.Once());
             }
+
+            [Fact]
+            public void DisposesOfDisposableMessageHandlerSelectorEachMessage()
+            {
+                var mockMessageHandlerSelector = new Mock<IMessageHandlerSelector>();
+
+                mockMessageHandlerSelector.As<IDisposable>();
+
+                var dispatcher = new MessageDispatcher<TestMessage>(() => mockMessageHandlerSelector.Object);
+
+                var messageSubject = new Subject<TestMessage>();
+
+                var testMessage = new TestMessage();
+
+                using(dispatcher.Run(messageSubject).Subscribe())
+                {
+                    messageSubject.OnNext(testMessage);
+                    messageSubject.OnNext(testMessage);
+                }
+
+                mockMessageHandlerSelector.As<IDisposable>().Verify(d => d.Dispose(), Times.Exactly(2));
+            }
+
 
             [Fact]
 			public void DoesntDispatchMessageWhichHasNoHandler()
