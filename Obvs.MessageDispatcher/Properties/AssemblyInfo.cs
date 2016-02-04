@@ -1,4 +1,5 @@
 ﻿using System.Reflection;
+using System.Runtime.CompilerServices;
 
 [assembly: AssemblyTitle("Obvs.MessageDispatcher")]
 [assembly: AssemblyDescription("A generic message dispatcher architecture based on the Obvs framework.")]
@@ -14,3 +15,5 @@
 
 [assembly: AssemblyVersion("0.1.*")]
 [assembly: AssemblyInformationalVersion("0.1.0-alpha")]
+
+[assembly: InternalsVisibleTo("Obvs.MessageDispatcher.Tests")]
