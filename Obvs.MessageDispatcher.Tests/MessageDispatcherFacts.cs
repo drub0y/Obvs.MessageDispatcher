@@ -12,67 +12,62 @@ using Xunit;
 namespace Obvs.MessageDispatcher.Tests
 {
     public class MessageDispatcherFacts
-	{
-		public class RunFacts
-		{
-			[Fact]
-			public void SubscribesToObservableMessageSource()
-			{
-				var mockMessageHandlerSelector = new Mock<IMessageHandlerSelector>();
+    {
+        public class RunFacts
+        {
+            [Fact]
+            public void SubscribesToObservableMessageSource()
+            {
+                var testMessagesMock = new Mock<IObservable<TestMessage>>();
+                testMessagesMock.Setup(it => it.Subscribe(It.IsAny<IObserver<TestMessage>>()))
+                    .Returns(Disposable.Empty);
 
-				var dispatcher = new MessageDispatcher<TestMessage>(() => mockMessageHandlerSelector.Object);
+                var dispatcher = new MessageDispatcher<TestMessage>(testMessagesMock.Object, () => Mock.Of<IMessageHandlerSelector>());
 
-				var testMessagesMock = new Mock<IObservable<TestMessage>>();
-				testMessagesMock.Setup(it => it.Subscribe(It.IsAny<IObserver<TestMessage>>()))
-					.Returns(Disposable.Empty);
+                var subscription = dispatcher.Subscribe(Mock.Of<IObserver<MessageDispatchResult<TestMessage>>>());
 
-				var messageDispatchResults = dispatcher.Run(testMessagesMock.Object);
+                subscription.Should().NotBeNull();
 
-				messageDispatchResults.Should().NotBeNull();
+                testMessagesMock.Verify(it => it.Subscribe(It.IsAny<IObserver<TestMessage>>()), Times.Once());
+            }
 
-				messageDispatchResults.Subscribe();
+            [Fact]
+            public void DisposesSubscriptionOnObservableMessageSource()
+            {
+                var sourceSubscription = new Mock<IDisposable>();
 
-				testMessagesMock.Verify(it => it.Subscribe(It.IsAny<IObserver<TestMessage>>()), Times.Once());
-			}
+                var testMessagesMock = new Mock<IObservable<TestMessage>>();
+                testMessagesMock.Setup(it => it.Subscribe(It.IsAny<IObserver<TestMessage>>()))
+                    .Returns(sourceSubscription.Object);
 
-			[Fact]
-			public void DisposesSubscriptionOnObservableMessageSource()
-			{
-				var mockMessageHandlerSelector = new Mock<IMessageHandlerSelector>();
+                var dispatcher = new MessageDispatcher<TestMessage>(testMessagesMock.Object, () => Mock.Of<IMessageHandlerSelector>());
 
-				var dispatcher = new MessageDispatcher<TestMessage>(() => mockMessageHandlerSelector.Object);
 
-				var runAsyncDisposableMock = new Mock<IDisposable>();
+                var subscription = dispatcher.Subscribe(Mock.Of<IObserver<MessageDispatchResult<TestMessage>>>());
 
-				var testMessagesMock = new Mock<IObservable<TestMessage>>();
-				testMessagesMock.Setup(it => it.Subscribe(It.IsAny<IObserver<TestMessage>>()))
-					.Returns(runAsyncDisposableMock.Object);
+                subscription.Dispose();
 
-				var messageDispatchResults = dispatcher.Run(testMessagesMock.Object);
+                sourceSubscription.Verify(it => it.Dispose(), Times.Once());
+            }
 
-				messageDispatchResults.Subscribe().Dispose();
+            [Fact]
+            public void InvokesMessageHandlerSelector()
+            {
+                var mockMessageHandlerSelector = new Mock<IMessageHandlerSelector>();
 
-				runAsyncDisposableMock.Verify(it => it.Dispose(), Times.Once());
-			}
+                var messageSubject = new Subject<TestMessage>();
 
-			[Fact]
-			public void InvokesMessageHandlerSelector()
-			{
-				var mockMessageHandlerSelector = new Mock<IMessageHandlerSelector>();
-
-				var dispatcher = new MessageDispatcher<TestMessage>(() => mockMessageHandlerSelector.Object);
-
-				var messageSubject = new Subject<TestMessage>();
+                var dispatcher = new MessageDispatcher<TestMessage>(messageSubject, () => mockMessageHandlerSelector.Object);
 
                 var testMessage = new TestMessage();
 
-				using (dispatcher.Run(messageSubject).Subscribe())
-				{
-					messageSubject.OnNext(testMessage);
-				}
-				
-				mockMessageHandlerSelector.Verify(mhp => mhp.SelectMessageHandler<TestMessage>(testMessage), Times.Once());
-			}
+                using(dispatcher.Subscribe())
+                {
+                    messageSubject.OnNext(testMessage);
+                }
+
+                mockMessageHandlerSelector.Verify(mhp => mhp.SelectMessageHandler<TestMessage>(testMessage), Times.Once());
+            }
 
             [Fact]
             public void InvokesNewMessageHandlerSelectorFromFactoryEachMessage()
@@ -96,14 +91,15 @@ namespace Obvs.MessageDispatcher.Tests
                         return result.Object;
                     });
 
-                var dispatcher = new MessageDispatcher<TestMessage>(messageHandlerSelectorFactoryMock.Object);
-
                 var messageSubject = new Subject<TestMessage>();
+
+                var dispatcher = new MessageDispatcher<TestMessage>(messageSubject, messageHandlerSelectorFactoryMock.Object);
+
 
                 var testMessage = new TestMessage();
                 var testMessage2 = new TestMessage();
 
-                using(dispatcher.Run(messageSubject).Subscribe())
+                using(dispatcher.Subscribe())
                 {
                     messageSubject.OnNext(testMessage);
                     messageSubject.OnNext(testMessage2);
@@ -122,13 +118,13 @@ namespace Obvs.MessageDispatcher.Tests
 
                 mockMessageHandlerSelector.As<IDisposable>();
 
-                var dispatcher = new MessageDispatcher<TestMessage>(() => mockMessageHandlerSelector.Object);
-
                 var messageSubject = new Subject<TestMessage>();
+
+                var dispatcher = new MessageDispatcher<TestMessage>(messageSubject, () => mockMessageHandlerSelector.Object);
 
                 var testMessage = new TestMessage();
 
-                using(dispatcher.Run(messageSubject).Subscribe())
+                using(dispatcher.Subscribe())
                 {
                     messageSubject.OnNext(testMessage);
                     messageSubject.OnNext(testMessage);
@@ -139,113 +135,104 @@ namespace Obvs.MessageDispatcher.Tests
 
 
             [Fact]
-			public void DoesntDispatchMessageWhichHasNoHandler()
-			{
-				var mockMessageHandlerSelector = new Mock<IMessageHandlerSelector>();
+            public void DoesntDispatchMessageWhichHasNoHandler()
+            {
+                var messageSubject = new Subject<TestMessage>();
 
-                var dispatcher = new MessageDispatcher<TestMessage>(() => mockMessageHandlerSelector.Object);
+                var dispatcher = new MessageDispatcher<TestMessage>(messageSubject, () => Mock.Of<IMessageHandlerSelector>());
 
-				var messageSubject = new Subject<TestMessage>();
+                TestMessage testMessage = new TestMessage();
+                MessageDispatchResult<TestMessage> expectedMessageDispatchResult = null;
 
-				var messageDispatchResults = dispatcher.Run(messageSubject);
+                using(dispatcher.Subscribe(mdr =>
+                   {
+                       expectedMessageDispatchResult = mdr;
+                   }))
+                {
+                    messageSubject.OnNext(testMessage);
+                }
 
-				TestMessage testMessage = new TestMessage();
+                expectedMessageDispatchResult.Should().NotBeNull();
 
-				using (messageDispatchResults.Subscribe(mdr =>
-				{
-					mdr.Message.Should().BeSameAs(testMessage);
-					mdr.Handled.Should().Be(false);
-				}))
-				{
-					messageSubject.OnNext(testMessage);
-				}
-			}
+                expectedMessageDispatchResult.Message.Should().BeSameAs(testMessage);
+                expectedMessageDispatchResult.Handled.Should().Be(false);
+            }
 
-			[Fact]
-			public void InvokesHandleAsyncOnMessageHandler()
-			{
-				Mock<IMessageHandler<TestMessage>> mockMessageHandler = new Mock<IMessageHandler<TestMessage>>();
+            [Fact]
+            public void InvokesHandleAsyncOnMessageHandler()
+            {
+                Mock<IMessageHandler<TestMessage>> mockMessageHandler = new Mock<IMessageHandler<TestMessage>>();
 
-				Mock<IMessageHandlerSelector> mockMessageHandlerSelector = new Mock<IMessageHandlerSelector>();
-				mockMessageHandlerSelector.Setup(mhp => mhp.SelectMessageHandler<TestMessage>(It.IsAny<TestMessage>()))
-					.Returns(mockMessageHandler.Object);
+                Mock<IMessageHandlerSelector> mockMessageHandlerSelector = new Mock<IMessageHandlerSelector>();
+                mockMessageHandlerSelector.Setup(mhp => mhp.SelectMessageHandler<TestMessage>(It.IsAny<TestMessage>()))
+                    .Returns(mockMessageHandler.Object);
 
-				var dispatcher = new MessageDispatcher<TestMessage>(() => mockMessageHandlerSelector.Object);
+                var messageSubject = new Subject<TestMessage>();
 
-				var messageSubject = new Subject<TestMessage>();
+                var dispatcher = new MessageDispatcher<TestMessage>(messageSubject, () => mockMessageHandlerSelector.Object);
 
-				var testMessage = new TestMessage();
+                var testMessage = new TestMessage();
 
-				var messageDispatcherResults = dispatcher.Run(messageSubject);
+                using(dispatcher.Subscribe())
+                {
+                    messageSubject.OnNext(testMessage);
+                }
 
-				using(messageDispatcherResults.Subscribe(mdr =>
-				{
-					mdr.Message.Should().BeSameAs(testMessage);
-					mdr.Handled.Should().Be(true);
-				}))
-				{
-					messageSubject.OnNext(testMessage);
-				}
+                mockMessageHandler.Verify(mh => mh.HandleAsync(testMessage, It.IsAny<CancellationToken>()), Times.Once());
+            }
 
-				mockMessageHandler.Verify(mh => mh.HandleAsync(testMessage, It.IsAny<CancellationToken>()), Times.Once());
-			}
+            [Fact]
+            public void DoesNotHandleMessagesBeforeOrAfterSubscription()
+            {
+                var mockMessageHandler = new Mock<IMessageHandler<TestMessage>>();
 
-			[Fact]
-			public void DoesNotHandleMessagesBeforeOrAfterSubscription()
-			{
-				var mockMessageHandler = new Mock<IMessageHandler<TestMessage>>();
+                var mockMessageHandlerSelector = new Mock<IMessageHandlerSelector>();
+                mockMessageHandlerSelector.Setup(mhp => mhp.SelectMessageHandler<TestMessage>(It.IsAny<TestMessage>()))
+                    .Returns(mockMessageHandler.Object);
 
-				var mockMessageHandlerSelector = new Mock<IMessageHandlerSelector>();
-				mockMessageHandlerSelector.Setup(mhp => mhp.SelectMessageHandler<TestMessage>(It.IsAny<TestMessage>()))
-					.Returns(mockMessageHandler.Object);
+                var messageSubject = new Subject<TestMessage>();
 
-				var dispatcher = new MessageDispatcher<TestMessage>(() => mockMessageHandlerSelector.Object);
+                var dispatcher = new MessageDispatcher<TestMessage>(messageSubject, () => mockMessageHandlerSelector.Object);
 
-				var messageSubject = new Subject<TestMessage>();
+                var testMessage = new TestMessage();
 
-				var testMessage = new TestMessage();
+                messageSubject.OnNext(testMessage);
 
-				var messageDispatcherResults = dispatcher.Run(messageSubject);
+                using(dispatcher.Subscribe())
+                {
+                    messageSubject.OnNext(testMessage);
+                }
 
-				messageSubject.OnNext(testMessage);
+                messageSubject.OnNext(testMessage);
 
-				using (messageDispatcherResults.Subscribe())
-				{
-					messageSubject.OnNext(testMessage);
-				}
+                mockMessageHandler.Verify(mh => mh.HandleAsync(testMessage, It.IsAny<CancellationToken>()), Times.Once());
+            }
 
-				messageSubject.OnNext(testMessage);
+            [Fact]
+            public async Task ProcessesMessagesInCorrectOrder()
+            {
+                var mockMessageHandler = new Mock<IMessageHandler<TestMessage>>();
 
-				mockMessageHandler.Verify(mh => mh.HandleAsync(testMessage, It.IsAny<CancellationToken>()), Times.Once());
-			}
+                var mockMessageHandlerSelector = new Mock<IMessageHandlerSelector>();
+                mockMessageHandlerSelector.Setup(mhp => mhp.SelectMessageHandler<TestMessage>(It.IsAny<TestMessage>()))
+                    .Returns(mockMessageHandler.Object);
 
-			[Fact]
-			public async Task ProcessesMessagesInCorrectOrder()
-			{
-				var mockMessageHandler = new Mock<IMessageHandler<TestMessage>>();
+                TestMessage testMessage1 = new TestMessage();
+                TestMessage testMessage2 = new TestMessage();
 
-				var mockMessageHandlerSelector = new Mock<IMessageHandlerSelector>();
-				mockMessageHandlerSelector.Setup(mhp => mhp.SelectMessageHandler<TestMessage>(It.IsAny<TestMessage>()))
-					.Returns(mockMessageHandler.Object);
+                var testMessages = (new[] { testMessage1, testMessage2 }).ToObservable();
 
-				var dispatcher = new MessageDispatcher<TestMessage>(() => mockMessageHandlerSelector.Object);
+                var dispatcher = new MessageDispatcher<TestMessage>(testMessages, () => mockMessageHandlerSelector.Object);
 
-				TestMessage testMessage1 = new TestMessage();
-				TestMessage testMessage2 = new TestMessage();
+                bool areEqual = await dispatcher.Select(mdr => mdr.Message).SequenceEqual(testMessages).FirstAsync();
 
-				var testMessages = (new[] { testMessage1, testMessage2 }).ToObservable();
+                areEqual.Should().Be(true);
+            }
+        }
 
-				var messageDispatcherResults = dispatcher.Run(testMessages);
+        public class TestMessage : IMessage
+        {
 
-				bool areEqual = await messageDispatcherResults.Select(mdr => mdr.Message).SequenceEqual(testMessages).FirstAsync();
-
-				areEqual.Should().Be(true);
-			}
-		}
-
-		public class TestMessage : IMessage
-		{
-
-		}
-	}
+        }
+    }
 }
