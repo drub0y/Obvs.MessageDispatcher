@@ -9,22 +9,25 @@ using System.Threading.Tasks;
 
 namespace Obvs.MessageDispatcher
 {
-    public class MessageDispatcher<TMessage> : IMessageDispatcher<TMessage>
+    internal class MessageDispatcher<TMessage> : IObservable<MessageDispatchResult<TMessage>>
     {
         private static readonly MethodInfo MessageHandlerSelectorSelectMessageHandlerGenericMethodInfo = typeof(IMessageHandlerSelector).GetMethod(nameof(IMessageHandlerSelector.SelectMessageHandler));
 
+        private readonly IObservable<TMessage> _messages;
         private readonly Func<IMessageHandlerSelector> _messageHandlerSelectorFactory;
         private readonly ConcurrentDictionary<Type, Func<IMessageHandlerSelector, TMessage, IMessageHandler>> _messageHandlerGetTypedHandlerFuncCache = new ConcurrentDictionary<Type, Func<IMessageHandlerSelector, TMessage, IMessageHandler>>();
         private readonly ConcurrentDictionary<Type, Func<IMessageHandler, TMessage, CancellationToken, Task>> _messageHandlerHandleAsyncFuncCache = new ConcurrentDictionary<Type, Func<IMessageHandler, TMessage, CancellationToken, Task>>();
 
-        public MessageDispatcher(Func<IMessageHandlerSelector> messageHandlerSelectorFactory)
+        public MessageDispatcher(IObservable<TMessage> messages, Func<IMessageHandlerSelector> messageHandlerSelectorFactory)
         {
+            _messages = messages;
             _messageHandlerSelectorFactory = messageHandlerSelectorFactory;
         }
 
-        public IObservable<MessageDispatchResult<TMessage>> Run(IObservable<TMessage> messages)
+
+        public IDisposable Subscribe(IObserver<MessageDispatchResult<TMessage>> observer)
         {
-            return messages.SelectMany(async (message, cancellationToken) =>
+            return _messages.SelectMany(async (message, cancellationToken) =>
             {
                 var messageHandlerSelector = _messageHandlerSelectorFactory();
 
@@ -54,7 +57,8 @@ namespace Obvs.MessageDispatcher
                     }
                 }
             })
-            .Select(mdr => mdr);
+            .Select(mdr => mdr)
+            .Subscribe(observer);
         }
 
         private IMessageHandler SelectHandlerForMessage(IMessageHandlerSelector messageHandlerSelector, TMessage message)
@@ -63,11 +67,11 @@ namespace Obvs.MessageDispatcher
                 message.GetType(),
                 mt =>
                 {
-                    var getHandlersOfMessageTypeMethodInfo = MessageHandlerSelectorSelectMessageHandlerGenericMethodInfo.MakeGenericMethod(mt);
+                    var getHandlerOfMessageTypeMethodInfo = MessageHandlerSelectorSelectMessageHandlerGenericMethodInfo.MakeGenericMethod(mt);
                     var messageHandlerSelectorParameterExpression = Expression.Parameter(typeof(IMessageHandlerSelector));
                     var messageParameterExpression = Expression.Parameter(typeof(TMessage));
 
-                    return Expression.Lambda<Func<IMessageHandlerSelector, TMessage, IMessageHandler>>(Expression.Call(messageHandlerSelectorParameterExpression, getHandlersOfMessageTypeMethodInfo, messageParameterExpression), messageHandlerSelectorParameterExpression, messageParameterExpression).Compile();
+                    return Expression.Lambda<Func<IMessageHandlerSelector, TMessage, IMessageHandler>>(Expression.Call(messageHandlerSelectorParameterExpression, getHandlerOfMessageTypeMethodInfo, Expression.Convert(messageParameterExpression, mt)), messageHandlerSelectorParameterExpression, messageParameterExpression).Compile();
                 });
 
             return getMessageHandlerFromSelectorTypedFunc(messageHandlerSelector, message);

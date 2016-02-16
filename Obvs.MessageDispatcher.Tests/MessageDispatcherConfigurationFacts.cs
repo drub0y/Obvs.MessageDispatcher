@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Reactive.Subjects;
 using FluentAssertions;
 using Moq;
 using Obvs.MessageDispatcher.Configuration;
@@ -30,7 +31,7 @@ namespace Obvs.MessageDispatcher.Tests
                 serviceBusMock.SetupGet(sb => sb.Commands)
                     .Returns(Mock.Of<IObservable<ICommand>>());
 
-                var messageDispatcherConfiguration = serviceBusMock.Object.DispatcherFor(sb => sb.Commands);
+                var messageDispatcherConfiguration = serviceBusMock.Object.WithDispatcherFor(sb => sb.Commands);
 
                 Action action = () => messageDispatcherConfiguration.WithMessageHandlerSelectorFactory(null);
 
@@ -45,7 +46,7 @@ namespace Obvs.MessageDispatcher.Tests
                 serviceBusMock.SetupGet(sb => sb.Commands)
                     .Returns(Mock.Of<IObservable<ICommand>>());
 
-                var messageDispatcherConfiguration = serviceBusMock.Object.DispatcherFor(sb => sb.Commands);
+                var messageDispatcherConfiguration = serviceBusMock.Object.WithDispatcherFor(sb => sb.Commands);
 
                 var updatedConfiguration = messageDispatcherConfiguration.WithMessageHandlerSelectorFactory(() => Mock.Of<IMessageHandlerSelector>());
 
@@ -59,7 +60,7 @@ namespace Obvs.MessageDispatcher.Tests
                 serviceBusMock.SetupGet(sb => sb.Commands)
                     .Returns(Mock.Of<IObservable<ICommand>>());
 
-                var messageDispatcherConfiguration = serviceBusMock.Object.DispatcherFor(sb => sb.Commands);
+                var messageDispatcherConfiguration = serviceBusMock.Object.WithDispatcherFor(sb => sb.Commands);
 
                 Func<IMessageHandlerSelector> messageHandlerSelectorFactory = () => Mock.Of<IMessageHandlerSelector>();
 
@@ -69,21 +70,66 @@ namespace Obvs.MessageDispatcher.Tests
             }
         }
 
-        public class RunDispatcherFacts
+        public class DispatchMessagesWithNoMessageDispatchResultActionFacts
         {
             [Fact]
-            public void ReturnsNonNullObservable()
+            public void SubscribesToUnderlyingObservable()
             {
+                var commandsObservableMock = new Mock<IObservable<ICommand>>();
+
                 var serviceBusMock = new Mock<IServiceBus>();
                 serviceBusMock.SetupGet(sb => sb.Commands)
-                    .Returns(Mock.Of<IObservable<ICommand>>());
+                    .Returns(commandsObservableMock.Object);
 
-                var messageDispatcherConfiguration = serviceBusMock.Object.DispatcherFor(sb => sb.Commands);
+                var messageDispatcherConfiguration = serviceBusMock.Object.WithDispatcherFor(sb => sb.Commands);
 
-                var messageDispatchResults = messageDispatcherConfiguration.WithMessageHandlerSelectorFactory(() => Mock.Of<IMessageHandlerSelector>())
-                    .RunDispatcher();
+                messageDispatcherConfiguration.WithMessageHandlerSelectorFactory(() => Mock.Of<IMessageHandlerSelector>())
+                    .DispatchMessages();
 
-                messageDispatchResults.Should().NotBeNull();
+                commandsObservableMock.Verify(co => co.Subscribe(It.IsNotNull<IObserver<ICommand>>()), Times.Once());
+            }
+        }
+
+        public class DispatchMessagesWithMessageDispatchResultActionFacts
+        {
+            [Fact]
+            public void SubscribesToUnderlyingObservable()
+            {
+                var commandsObservableMock = new Mock<IObservable<ICommand>>();
+
+                var serviceBusMock = new Mock<IServiceBus>();
+                serviceBusMock.SetupGet(sb => sb.Commands)
+                    .Returns(commandsObservableMock.Object);
+
+                var messageDispatcherConfiguration = serviceBusMock.Object.WithDispatcherFor(sb => sb.Commands);
+
+                messageDispatcherConfiguration.WithMessageHandlerSelectorFactory(() => Mock.Of<IMessageHandlerSelector>())
+                    .DispatchMessages(Mock.Of<Action<MessageDispatchResult<ICommand>>>());
+
+                commandsObservableMock.Verify(co => co.Subscribe(It.IsNotNull<IObserver<ICommand>>()), Times.Once());
+            }
+
+            [Fact]
+            public void PropagatesMessageDispatchResultToSuppliedAction()
+            {
+                var commandsSubject = new Subject<ICommand>();
+
+                var serviceBusMock = new Mock<IServiceBus>();
+                serviceBusMock.SetupGet(sb => sb.Commands)
+                    .Returns(commandsSubject);
+
+                var messageDispatcherConfiguration = serviceBusMock.Object.WithDispatcherFor(sb => sb.Commands);
+
+                var messageDispatchResultActionMock = new Mock<Action<MessageDispatchResult<ICommand>>>();
+
+                messageDispatcherConfiguration.WithMessageHandlerSelectorFactory(() => Mock.Of<IMessageHandlerSelector>())
+                    .DispatchMessages(messageDispatchResultActionMock.Object);
+
+                var command = Mock.Of<ICommand>();
+
+                commandsSubject.OnNext(command);
+
+                messageDispatchResultActionMock.Verify(a => a(It.Is<MessageDispatchResult<ICommand>>(mdr => Object.ReferenceEquals(mdr.Message, command))), Times.Once());
             }
         }
     }
@@ -95,7 +141,7 @@ namespace Obvs.MessageDispatcher.Tests
         {
             IServiceBus serviceBus = null;
 
-            Action action = () => serviceBus.DispatcherFor(sb => sb.Commands);
+            Action action = () => serviceBus.WithDispatcherFor(sb => sb.Commands);
 
             action.ShouldThrow<ArgumentNullException>()
                 .And.ParamName.Should().Be("serviceBus");
@@ -108,7 +154,7 @@ namespace Obvs.MessageDispatcher.Tests
             serviceBusMock.SetupGet(sb => sb.Commands)
                 .Returns(Mock.Of<IObservable<ICommand>>());
 
-            var messageDispatcherConfiguration = serviceBusMock.Object.DispatcherFor(sb => sb.Commands);
+            var messageDispatcherConfiguration = serviceBusMock.Object.WithDispatcherFor(sb => sb.Commands);
 
             messageDispatcherConfiguration.Should().NotBeNull();
         }
@@ -122,7 +168,7 @@ namespace Obvs.MessageDispatcher.Tests
             serviceBusMock.SetupGet(sb => sb.Commands)
                 .Returns(commandsObservableMock);
 
-            var messageDispatcherConfiguration = serviceBusMock.Object.DispatcherFor(sb => sb.Commands);
+            var messageDispatcherConfiguration = serviceBusMock.Object.WithDispatcherFor(sb => sb.Commands);
 
             ((MessageDispatcherConfiguration<ICommand>)messageDispatcherConfiguration).Messages.Should().Be(commandsObservableMock);
         }
