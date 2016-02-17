@@ -1,13 +1,12 @@
 ﻿using System;
-using Obvs.MessageDispatcher;
 
 namespace Obvs.MessageDispatcher.Configuration
 {
     public interface IMessageDispatcherConfigurationWithFactory<TMessage> : IMessageDispatcherConfiguration<TMessage>
         where TMessage : class
     {
-        void DispatchMessages();
-        void DispatchMessages(Action<MessageDispatchResult<TMessage>> onNextMessageDispatchResult);
+        IDisposable DispatchMessages();
+        IDisposable DispatchMessages(Action<MessageDispatchResult<TMessage>> onNextMessageDispatchResult);
     }
 
     public interface IMessageDispatcherConfiguration<TMessage>
@@ -41,14 +40,14 @@ namespace Obvs.MessageDispatcher.Configuration
             return this;
         }
 
-        public void DispatchMessages()
+        public IDisposable DispatchMessages()
         {
-            _messages.DispatchMessages(_messageHandlerSelectorFactory);
+            return _messages.DispatchMessages(_messageHandlerSelectorFactory);
         }
 
-        public void DispatchMessages(Action<MessageDispatchResult<TMessage>> onNextMessageDispatchResult)
+        public IDisposable DispatchMessages(Action<MessageDispatchResult<TMessage>> onNextMessageDispatchResult)
         {
-            _messages.DispatchMessages(_messageHandlerSelectorFactory, onNextMessageDispatchResult);
+            return _messages.DispatchMessages(_messageHandlerSelectorFactory, onNextMessageDispatchResult);
         }
     }
 }
