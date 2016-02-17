@@ -1,11 +1,15 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 14
-VisualStudioVersion = 14.0.22823.1
+VisualStudioVersion = 14.0.25008.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Obvs.MessageDispatcher", "Obvs.MessageDispatcher\Obvs.MessageDispatcher.csproj", "{DA7E0D32-9948-45B8-8F05-3F16689965A2}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Obvs.MessageDispatcher.Tests", "Obvs.MessageDispatcher.Tests\Obvs.MessageDispatcher.Tests.csproj", "{34869DEB-079A-492F-BB8B-2BA0F68F1E37}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Obvs.MessageDispatcher.Autofac", "Obvs.MessageDispatcher.Autofac\Obvs.MessageDispatcher.Autofac.csproj", "{A375531F-CBD6-42E6-B5E3-630AA0A84FF6}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Integrations", "Integrations", "{3CEC4F97-2201-4E26-81BB-46F0D1D3BC9E}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -21,8 +25,15 @@ Global
 		{34869DEB-079A-492F-BB8B-2BA0F68F1E37}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{34869DEB-079A-492F-BB8B-2BA0F68F1E37}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{34869DEB-079A-492F-BB8B-2BA0F68F1E37}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A375531F-CBD6-42E6-B5E3-630AA0A84FF6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A375531F-CBD6-42E6-B5E3-630AA0A84FF6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A375531F-CBD6-42E6-B5E3-630AA0A84FF6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A375531F-CBD6-42E6-B5E3-630AA0A84FF6}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{A375531F-CBD6-42E6-B5E3-630AA0A84FF6} = {3CEC4F97-2201-4E26-81BB-46F0D1D3BC9E}
 	EndGlobalSection
 EndGlobal

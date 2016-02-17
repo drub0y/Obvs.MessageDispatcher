@@ -1,0 +1,17 @@
+﻿<?xml version="1.0"?>
+<package>
+    <metadata>
+        <id>$id$</id>
+        <version>$version$</version>
+        <title>$title$</title>
+        <authors>Drew Marsh (@drub0y)</authors>
+        <projectUrl>https://github.com/drub0y/Obvs.MessageDispatcher/</projectUrl>
+        <licenseUrl>https://github.com/drub0y/Obvs.MessageDispatcher/blob/master/LICENSE.md</licenseUrl>
+        <description>A message dispatcher framework build upon the Obvs Framework.</description>
+        <copyright>Copyright 2015</copyright>
+        <tags>Commands Events CQRS Rx Observable</tags>
+        <releaseNotes>
+            * Initial release
+        </releaseNotes>
+    </metadata>
+</package>
