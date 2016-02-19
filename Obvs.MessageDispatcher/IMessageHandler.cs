@@ -8,7 +8,7 @@ namespace Obvs.MessageDispatcher
 
 	}
 
-	public interface IMessageHandler<TMessage> : IMessageHandler
+	public interface IMessageHandler<in TMessage> : IMessageHandler
 	{
 		Task HandleAsync(TMessage message, CancellationToken cancellationToken);
 	}
