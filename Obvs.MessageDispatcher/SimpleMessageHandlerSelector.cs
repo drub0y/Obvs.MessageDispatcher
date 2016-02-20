@@ -2,11 +2,10 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
-using Obvs.MessageDispatcher;
 
 namespace Obvs.MessageDispatcher
 {
-    public sealed class SimpleMessageHandlerSelector : IMessageHandlerSelector
+    internal sealed class SimpleMessageHandlerSelector : ISimpleMessageHandlerSelector
     {
         internal Dictionary<Type, Func<IMessageHandler>> _messageHandlerTypesByHandledMessageType = new Dictionary<Type, Func<IMessageHandler>>();
 

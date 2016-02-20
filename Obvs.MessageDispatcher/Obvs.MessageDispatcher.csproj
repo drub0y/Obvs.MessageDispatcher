@@ -64,6 +64,7 @@
     <Compile Include="Extensions\ServiceBusExtensions.cs" />
     <Compile Include="IMessageHandler.cs" />
     <Compile Include="IMessageHandlerSelector.cs" />
+    <Compile Include="ISimpleMessageHandlerSelector.cs" />
     <Compile Include="MessageDispatcher.cs" />
     <Compile Include="MessageDispatchResult.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

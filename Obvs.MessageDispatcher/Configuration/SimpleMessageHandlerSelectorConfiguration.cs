@@ -7,10 +7,12 @@ namespace Obvs.MessageDispatcher.Configuration
     internal class SimpleMessageHandlerSelectorFactoryConfiguration<TMessage> : ISimpleMessageHandlerSelectorFactoryConfiguration<TMessage>
         where TMessage : class
     {
-        private readonly SimpleMessageHandlerSelector _simpleMessageHandlerSelector;
+        private readonly ISimpleMessageHandlerSelector _simpleMessageHandlerSelector;
 
-        public SimpleMessageHandlerSelectorFactoryConfiguration(SimpleMessageHandlerSelector simpleMessageHandlerSelector)
+        public SimpleMessageHandlerSelectorFactoryConfiguration(ISimpleMessageHandlerSelector simpleMessageHandlerSelector)
         {
+            if(simpleMessageHandlerSelector == null) throw new ArgumentNullException(nameof(simpleMessageHandlerSelector));
+
             _simpleMessageHandlerSelector = simpleMessageHandlerSelector;
         }
 
@@ -21,9 +23,11 @@ namespace Obvs.MessageDispatcher.Configuration
             return this;
         }
 
-        public ISimpleMessageHandlerSelectorFactoryConfiguration<TMessage> RegisterMessageHandler(Type messageHandler)
+        public ISimpleMessageHandlerSelectorFactoryConfiguration<TMessage> RegisterMessageHandler(Type messageHandlerType)
         {
-            _simpleMessageHandlerSelector.RegisterMessageHandler(messageHandler);
+            if(messageHandlerType == null) throw new ArgumentNullException(nameof(messageHandlerType));
+
+            _simpleMessageHandlerSelector.RegisterMessageHandler(messageHandlerType);
 
             return this;
         }
@@ -61,6 +65,8 @@ namespace Obvs.MessageDispatcher.Configuration
 
         public ISimpleMessageHandlerSelectorFactoryConfiguration<TMessage> RegisterMessageHandler(IMessageHandler messageHandler)
         {
+            if(messageHandler == null) throw new ArgumentNullException(nameof(messageHandler));
+
             _simpleMessageHandlerSelector.RegisterMessageHandler(messageHandler);
 
             return this;

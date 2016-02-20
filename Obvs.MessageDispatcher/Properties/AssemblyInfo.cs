@@ -17,3 +17,4 @@ using System.Runtime.CompilerServices;
 [assembly: AssemblyInformationalVersion("0.1.0-alpha")]
 
 [assembly: InternalsVisibleTo("Obvs.MessageDispatcher.Tests")]
+[assembly: InternalsVisibleTo("DynamicProxyGenAssembly2")]
