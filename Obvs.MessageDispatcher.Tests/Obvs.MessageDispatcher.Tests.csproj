@@ -102,8 +102,8 @@
     <Compile Include="MessageDispatcherConfigurationFacts.cs" />
     <Compile Include="MessageDispatcherFacts.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="SimpleMessageHandlerSelectorConfigurationFacts.cs" />
-    <Compile Include="SimpleMessageHandlerSelectorFacts.cs" />
+    <Compile Include="DefaultMessageHandlerSelectorConfigurationFacts.cs" />
+    <Compile Include="DefaultMessageHandlerSelectorFacts.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Obvs.MessageDispatcher\Obvs.MessageDispatcher.csproj">

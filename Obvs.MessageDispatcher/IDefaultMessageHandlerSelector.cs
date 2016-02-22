@@ -2,7 +2,7 @@
 
 namespace Obvs.MessageDispatcher
 {
-    internal interface ISimpleMessageHandlerSelector : IMessageHandlerSelector
+    internal interface IDefaultMessageHandlerSelector : IMessageHandlerSelector
     {
         void RegisterMessageHandler(Type messageHandlerType);
         void RegisterMessageHandler(IMessageHandler messageHandler);

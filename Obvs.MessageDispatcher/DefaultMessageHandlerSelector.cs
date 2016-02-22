@@ -5,11 +5,11 @@ using System.Linq.Expressions;
 
 namespace Obvs.MessageDispatcher
 {
-    internal sealed class SimpleMessageHandlerSelector : ISimpleMessageHandlerSelector
+    internal sealed class DefaultMessageHandlerSelector : IDefaultMessageHandlerSelector
     {
         internal Dictionary<Type, Func<IMessageHandler>> _messageHandlerTypesByHandledMessageType = new Dictionary<Type, Func<IMessageHandler>>();
 
-        public SimpleMessageHandlerSelector()
+        public DefaultMessageHandlerSelector()
         {
         }
 
