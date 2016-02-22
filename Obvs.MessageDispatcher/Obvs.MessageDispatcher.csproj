@@ -57,15 +57,18 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Configuration.cs" />
+    <Compile Include="Configuration\CoreConfiguration.cs" />
+    <Compile Include="Configuration\DefaultMessageHandlerSelectorConfiguration.cs" />
     <Compile Include="Extensions\ObservableExtensions.cs" />
     <Compile Include="Extensions\ServiceEndpointExtensions.cs" />
     <Compile Include="Extensions\ServiceBusExtensions.cs" />
     <Compile Include="IMessageHandler.cs" />
     <Compile Include="IMessageHandlerSelector.cs" />
+    <Compile Include="IDefaultMessageHandlerSelector.cs" />
     <Compile Include="MessageDispatcher.cs" />
     <Compile Include="MessageDispatchResult.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="DefaultMessageHandlerSelector.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Obvs.MessageDispatcher.nuspec" />

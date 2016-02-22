@@ -1,4 +1,5 @@
 ﻿using System.Reflection;
+using System.Runtime.CompilerServices;
 
 [assembly: AssemblyTitle("Obvs.MessageDispatcher.Tests")]
 
@@ -12,3 +13,5 @@
 [assembly: AssemblyCopyright("Copyright ©  2015")]
 
 [assembly: AssemblyVersion("0.1.*")]
+
+[assembly: InternalsVisibleTo("DynamicProxyGenAssembly2")]

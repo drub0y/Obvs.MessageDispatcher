@@ -9,7 +9,7 @@
         <licenseUrl>https://github.com/drub0y/Obvs.MessageDispatcher/blob/master/LICENSE.md</licenseUrl>
         <description>A message dispatcher framework build upon the Obvs Framework.</description>
         <copyright>Copyright 2015</copyright>
-        <tags>Commands Events CQRS Rx Observable</tags>
+        <tags>Messages Commands Events CQRS Rx Observable</tags>
         <releaseNotes>
             * Initial release
         </releaseNotes>
