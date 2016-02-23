@@ -11,7 +11,7 @@
         <copyright>Copyright 2015</copyright>
         <tags>Messages Commands Events CQRS Rx Observable</tags>
         <releaseNotes>
-            * Initial release
+            * Added default message handler selector implementation and related configuration extensions.
         </releaseNotes>
     </metadata>
 </package>
