@@ -57,6 +57,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="CompositeMessageHandler.cs" />
     <Compile Include="Configuration\CoreConfiguration.cs" />
     <Compile Include="Configuration\DefaultMessageHandlerSelectorConfiguration.cs" />
     <Compile Include="Extensions\ObservableExtensions.cs" />
