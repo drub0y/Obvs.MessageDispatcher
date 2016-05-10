@@ -9,7 +9,7 @@ A message dispatching framework built upon [the Obvs framework](https://github.c
 The simplest possible configuration of the message dispatching framework on top of an Obvs service bus 
 looks like this:
 
-```
+```CSharp
 // Configure and create an Obvs service bus instance
 var myObvsServiceBusConfiguration = ConfigureServiceBus();
 var serviceBus = myObvsServiceBusConfiguration.CreateServiceBus();
@@ -23,5 +23,5 @@ dispatcherConfiguration.WithDefaultMessageHandlerFactory()
     .RegisterMessageHandlers(typeof(MyProgram).Assembly);
 
 // Start the message dispatcher
-dispatcherConfiguration.DispatchMessages();
+dispatcherConfiguration.DispatchMessages().Subscribe();
 ```
