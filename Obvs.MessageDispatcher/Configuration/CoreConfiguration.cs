@@ -5,8 +5,7 @@ namespace Obvs.MessageDispatcher.Configuration
     public interface IMessageDispatcherConfigurationWithFactory<TMessage> : IMessageDispatcherConfiguration<TMessage>
         where TMessage : class
     {
-        IDisposable DispatchMessages();
-        IDisposable DispatchMessages(Action<MessageDispatchResult<TMessage>> onNextMessageDispatchResult);
+        IObservable<MessageDispatchResult<TMessage>> DispatchMessages();
     }
 
     public interface IMessageDispatcherConfiguration<TMessage>
@@ -40,14 +39,21 @@ namespace Obvs.MessageDispatcher.Configuration
             return this;
         }
 
-        public IDisposable DispatchMessages()
+        public IObservable<MessageDispatchResult<TMessage>> DispatchMessages() => new MessageDispatcher<TMessage>(_messages, _messageHandlerSelectorFactory);
+    }
+
+    public static class MessageDispatcherConfigurationWithFactoryExtensions
+    {
+        public static IDisposable DispatchMessages<TMessage>(this IMessageDispatcherConfigurationWithFactory<TMessage> messageDispatcherConfigurationWithFactory, Action<MessageDispatchResult<TMessage>> onNextMessageDispatchResult, Action<Exception> onError, Action onCompleted) 
+            where TMessage : class
         {
-            return _messages.DispatchMessages(_messageHandlerSelectorFactory);
+            return messageDispatcherConfigurationWithFactory.DispatchMessages().Subscribe(onNextMessageDispatchResult, onError, onCompleted);
         }
 
-        public IDisposable DispatchMessages(Action<MessageDispatchResult<TMessage>> onNextMessageDispatchResult)
+        public static IDisposable DispatchMessages<TMessage>(this IMessageDispatcherConfigurationWithFactory<TMessage> messageDispatcherConfigurationWithFactory, IObserver<MessageDispatchResult<TMessage>> observer)
+            where TMessage : class
         {
-            return _messages.DispatchMessages(_messageHandlerSelectorFactory, onNextMessageDispatchResult);
+            return messageDispatcherConfigurationWithFactory.DispatchMessages().Subscribe(observer);
         }
     }
 }
