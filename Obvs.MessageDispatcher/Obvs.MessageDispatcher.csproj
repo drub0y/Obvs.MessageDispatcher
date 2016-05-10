@@ -60,7 +60,6 @@
     <Compile Include="CompositeMessageHandler.cs" />
     <Compile Include="Configuration\CoreConfiguration.cs" />
     <Compile Include="Configuration\DefaultMessageHandlerSelectorConfiguration.cs" />
-    <Compile Include="Extensions\ObservableExtensions.cs" />
     <Compile Include="Extensions\ServiceEndpointExtensions.cs" />
     <Compile Include="Extensions\ServiceBusExtensions.cs" />
     <Compile Include="IMessageHandler.cs" />
