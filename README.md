@@ -1,10 +1,10 @@
-#Obvs.MessageDispatcher
+# Obvs.MessageDispatcher
 
 A message dispatching framework built upon [the Obvs framework](https://github.com/inter8ection/Obvs).
 
 ---
 
-##Basic Configuration Example
+## Basic Configuration Example
 
 The simplest possible configuration of the message dispatching framework on top of an Obvs service bus 
 looks like this:
